@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.DS_Store
+npm-debug.log*
+.vscode/
+coverage/
+.idea/
+.cache/
+*.log
+yarn-error.log
+/.pnp/
+/.pnp.js
+test-results.xml
+/.nyc_output/
