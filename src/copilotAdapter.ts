@@ -25,6 +25,7 @@ export class CopilotAgent implements Agent {
   id: string;
   name: string;
   role?: string;
+  model?: string;
 
   // Shared client for all CopilotAgent instances
   private static client: any | undefined;
@@ -32,14 +33,16 @@ export class CopilotAgent implements Agent {
   // Each agent holds its own session so the SDK can track context per agent
   private session: any | undefined;
 
-  constructor(id: string, name: string, role?: string) {
+  constructor(id: string, name: string, role?: string, model?: string) {
     this.id = id;
     this.name = name;
     this.role = role;
+    this.model = model;
   }
 
   private static async ensureClient(): Promise<any> {
     if (!CopilotAgent.client) {
+      console.log("[CopilotAgent] Starting Copilot client...");
       // Use dynamic import to avoid ESM/CJS resolution errors when the SDK
       // package only exports ESM. This lets the module be present but only
       // loaded when a CopilotAgent is actually used.
@@ -47,6 +50,7 @@ export class CopilotAgent implements Agent {
       const CopilotClientCtor = sdk.CopilotClient;
       CopilotAgent.client = new CopilotClientCtor({ autoStart: true, githubToken: process.env.COPILOT_GITHUB_TOKEN });
       await CopilotAgent.client.start();
+      console.log("[CopilotAgent] Copilot client started.");
     }
     return CopilotAgent.client as any;
   }
@@ -55,7 +59,7 @@ export class CopilotAgent implements Agent {
     // Simple prompt builder: include recent history and agent role
     const roleHint = this.role ? `あなたの役割: ${this.role}\n` : "";
     const convo = history.map((m) => `${m.speaker}: ${m.text}`).join("\n");
-    return `${roleHint}${convo}\n${this.name}として次に一言で応答してください:`;
+    return `${roleHint}${convo}\n${this.name}として、詳細に意見を述べてください:`;
   }
 
   async reply(history: Message[]): Promise<Message> {
@@ -67,7 +71,7 @@ export class CopilotAgent implements Agent {
       // handler that allows tool permissions by default. Adapt this for stricter
       // policies in production.
       this.session = await client.createSession({
-        model: process.env.COPILOT_MODEL || "gpt-5-mini",
+        model: this.model || process.env.COPILOT_MODEL || "gpt-5-mini",
         systemMessage: {
           content: `You are an agent named ${this.name}. Role: ${this.role || "participant"}`,
         },
@@ -79,10 +83,12 @@ export class CopilotAgent implements Agent {
     }
 
     const prompt = this.buildPrompt(history);
+    console.log(`[CopilotAgent] ${this.name} sending prompt (${history.length} history items)...`);
     // sendAndWait waits until the assistant finishes and returns the final event
     const assistantEvent = await this.session.sendAndWait({ prompt }, 120000);
 
     const text = assistantEvent?.data?.content ?? "(no response)";
+    console.log(`[CopilotAgent] ${this.name} received response (${text.length} chars)`);
     return { speaker: this.name, text, timestamp: nowISO() };
   }
 
@@ -119,7 +125,14 @@ export class MockAgent implements Agent {
 
   async reply(history: Message[]): Promise<Message> {
     this.counter++;
-    const text = `(${this.name}) 回答${this.counter} — ここはモック応答です。役割: ${this.role || "(なし)"}`;
+    const responses = [
+      "自転車レーンの増加は、交通渋滞を減らし、環境に優しい移動手段を促進します。都市の持続可能性を高めるために必要です。",
+      "自転車レーンの拡大は、自動車スペースを減らし、緊急車両の通行を妨げる可能性があります。コストも高くつくでしょう。",
+      "両者の意見を考慮し、スマートな都市計画でバランスを取ることが重要です。例えば、共有レーンや時間帯別の利用を提案します。",
+      "賛成派の環境面の利点は魅力的ですが、反対派の現実的な懸念も無視できません。データに基づいた評価が必要です。",
+      "最終的に、住民のニーズと都市のインフラを考慮した合意点を見つけましょう。合意点: 試験的な導入と評価を実施する。",
+    ];
+    const text = responses[(this.counter - 1) % responses.length];
     return { speaker: this.name, text, timestamp: nowISO() };
   }
 }

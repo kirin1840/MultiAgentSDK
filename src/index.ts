@@ -5,12 +5,12 @@ async function main() {
   console.log("Multi-Agent Debate Demo (Copilot SDK)");
 
   const agents = [
-    new CopilotAgent("a1", "Alice", "提案者"),
-    new CopilotAgent("a2", "Bob", "反対者"),
+    new CopilotAgent("a1", "Alice", "提案者", "GPT-4.1"),
+    new CopilotAgent("a2", "Bob", "反対者", "Haiku4.5"),
     new CopilotAgent("a3", "Carol", "調停者"),
   ];
 
-  const orch = new Orchestrator(agents, { rounds: 1 });
+  const orch = new Orchestrator(agents, { rounds: 3 });
   const initial = "議題: 都市での自転車レーンを増やすべきか? 各自の立場から議論してください。";
 
   const history = await orch.run(initial);

@@ -8,6 +8,7 @@ export interface Agent {
   id: string;
   name: string;
   role?: string;
+  model?: string;
   /**
    * Given the conversation history, produce the next message.
    * Implementations may call external LLM or SDKs.
